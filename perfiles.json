@@ -1,0 +1,91 @@
+{
+  "_comentario": "Perfiles de sitios de novelas web",
+  "_version": "1.0",
+  "perfiles": [
+    {
+      "id": "novelbin",
+      "nombre": "NovelBin",
+      "dominios": ["novelbin.me", "novelbin.com"],
+      "activo": true,
+      "descripcion": "Sitio de novelas web en inglés con amplio catálogo",
+      "patron_indice": "/novel-book/[^/]+/?$",
+      "patron_capitulo": "/novel-book/.+/chapter-",
+      "selectores": {
+        "titulo": ["h2", ".chr-title", ".chapter-title"],
+        "contenido": ["#chr-content", ".chr-c", "#chapter-content", ".chapter-content"],
+        "siguiente": ["a.next_page", "a[rel='next']", ".next-chap", "a:has-text('Next Chapter')"],
+        "indice_primer_cap": ["a.btn-read-now", "a[href*='/chapter-']", ".chapter-list a", "ul.list-chapter a"],
+        "eliminar_anuncios": [".ads", ".ad", ".adsbox", ".adsbygoogle"]
+      },
+      "opciones": { "delay_entre_paginas": 2.0, "espera_carga": 1.5, "base_url": "https://novelbin.me" }
+    },
+    {
+      "id": "lightnovelworld",
+      "nombre": "Light Novel World",
+      "dominios": ["lightnovelworld.org", "www.lightnovelworld.org"],
+      "activo": true,
+      "descripcion": "Sitio de light novels. NOTA: lightnovelworld.co fue cerrado, el dominio activo es .org",
+      "patron_indice": "/novel/[^/]+/?$",
+      "patron_capitulo": "/novel/.+/chapter/",
+      "selectores": {
+        "titulo": ["h1", ".chapter-title", "h1.chapter-title"],
+        "contenido": [".chapter-content", "#chapter-content", ".content-container"],
+        "siguiente": ["a[href*='/chapter/'][href*='chapter/2']", "a[rel='next']", "a:has-text('Next Chapter')", "a:has-text('Next')"],
+        "indice_primer_cap": ["a:has-text('Start Reading')", "a[href*='/chapter/1/']", ".chapter-list a:first-child"],
+        "eliminar_anuncios": [".ads", ".ad-container", ".adsbygoogle", ".chapter-warning", ".notice"]
+      },
+      "opciones": { "delay_entre_paginas": 2.5, "espera_carga": 3.0, "base_url": "https://lightnovelworld.org" }
+    },
+    {
+      "id": "royalroad",
+      "nombre": "Royal Road",
+      "dominios": ["royalroad.com", "www.royalroad.com"],
+      "activo": true,
+      "descripcion": "Plataforma de ficción web original en inglés",
+      "patron_indice": "/fiction/[0-9]+/[^/]+/?$",
+      "patron_capitulo": "/fiction/.+/chapter/",
+      "selectores": {
+        "titulo": [".chapter-title", "h1", ".fic-title"],
+        "contenido": [".chapter-content", ".fiction-body", "div.chapter-inner"],
+        "siguiente": ["a[rel='next']", ".btn-primary:has-text('Next')", "a:has-text('Next Chapter')"],
+        "indice_primer_cap": ["a:has-text('Start Reading')", ".chapter-row a", "table.chapters a"],
+        "eliminar_anuncios": [".ads", ".adsbygoogle", ".author-note-portlet"]
+      },
+      "opciones": { "delay_entre_paginas": 1.5, "espera_carga": 1.5, "base_url": "https://www.royalroad.com" }
+    },
+    {
+      "id": "scribblehub",
+      "nombre": "Scribble Hub",
+      "dominios": ["scribblehub.com", "www.scribblehub.com"],
+      "activo": true,
+      "descripcion": "Comunidad de ficción web y manga original",
+      "patron_indice": "/series/[0-9]+/[^/]+/?$",
+      "patron_capitulo": "/read/[0-9]+",
+      "selectores": {
+        "titulo": [".chapter-title", "h1", ".wi_fictions_detail"],
+        "contenido": [".wi_news_body", ".chapter-content", "#chp_raw", ".txt_story"],
+        "siguiente": ["a#btn_next", "a[rel='next']", "a:has-text('Next Chapter')"],
+        "indice_primer_cap": ["a.btn_read_now", ".chapter_row a", "a:has-text('Start Reading')"],
+        "eliminar_anuncios": [".ads", ".adsbygoogle", ".wi_ad"]
+      },
+      "opciones": { "delay_entre_paginas": 2.0, "espera_carga": 2.0, "base_url": "https://www.scribblehub.com" }
+    },
+    {
+      "id": "generico",
+      "nombre": "Genérico (detección automática)",
+      "dominios": [],
+      "activo": true,
+      "descripcion": "Fallback con selectores comunes. Se usa cuando no hay perfil específico.",
+      "patron_indice": "",
+      "patron_capitulo": "",
+      "selectores": {
+        "titulo": ["h1","h2","h3",".chapter-title","#chapter-title",".chapter-name",".title","#title",".post-title",".chr-title",".entry-title"],
+        "contenido": ["#chapter-content",".chapter-content","#chr-content",".chr-c",".chp-raw",".chapter-text",".entry-content",".post-content","article",".content","main",".fiction-body",".wi_news_body",".text-left",".fr-view"],
+        "siguiente": ["a[rel='next']","a.next_page","a.next-chapter","a.btn-next","a#btn_next","a:has-text('Next Chapter')","a:has-text('Next')","a:has-text('Siguiente')"],
+        "indice_primer_cap": ["a:has-text('Start Reading')","a:has-text('Read Now')","a:has-text('Chapter 1')","a.btn-read-now","a.read-btn",".chapter-list a:first-child","a[href*='chapter-1']"],
+        "eliminar_anuncios": [".ads",".ad",".adsbox",".adsbygoogle",".google-auto-placed",".ad-container"]
+      },
+      "opciones": { "delay_entre_paginas": 2.5, "espera_carga": 2.0, "base_url": "" }
+    }
+  ]
+}

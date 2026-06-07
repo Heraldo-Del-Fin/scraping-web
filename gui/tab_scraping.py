@@ -7,11 +7,11 @@ Pestaña "Descargar" — interfaz para lanzar el scraper.
 import sys
 import tkinter as tk
 from pathlib import Path
-from tkinter import messagebox, ttk
+from tkinter import filedialog, messagebox, ttk
 
 from core.perfiles import ids_disponibles
 from gui.widgets import (
-    BG2, BG3, FONT_MAIN, FONT_TITLE,
+    ACCENT, BG2, BG3, ENTRY_BG, FG, FG2, FONT_MAIN, FONT_TITLE,
     ProcessRunner, action_button, append_log,
     folder_row, labeled_entry, log_box,
     progress_section, radio_group,
@@ -19,6 +19,10 @@ from gui.widgets import (
 
 BASE_DIR = Path(__file__).parent.parent
 SCRAPER  = BASE_DIR / "scraper_cli.py"
+
+# Color de aviso para la sección Cloudflare
+CF_BG  = "#0d2137"
+CF_FG  = "#f5a623"
 
 
 class TabScraping(tk.Frame):
@@ -32,11 +36,11 @@ class TabScraping(tk.Frame):
     # ── Construcción ──────────────────────────────────────────────────────────
 
     def _build(self):
-        tk.Label(self, text="📥  Descargar Novela", bg=BG2, fg="#eaeaea",
+        tk.Label(self, text="📥  Descargar Novela", bg=BG2, fg=FG,
                  font=FONT_TITLE).grid(
             row=0, column=0, columnspan=3, sticky="w", padx=16, pady=(16, 8))
 
-        # Formulario
+        # Formulario principal
         inn = tk.Frame(self, bg=BG2)
         inn.grid(row=1, column=0, columnspan=3, sticky="ew", padx=16)
         inn.grid_columnconfigure(1, weight=1)
@@ -44,12 +48,12 @@ class TabScraping(tk.Frame):
         self.v_url    = labeled_entry(inn, "URL de la novela:", 0,
                                       "https://novelbin.me/novel-book/")
         self.v_nombre = labeled_entry(inn, "Nombre del archivo:", 1, "")
-        self.v_caps   = labeled_entry(inn, "Capítulos a descargar:", 2, "10", width=10)
+        self.v_caps   = labeled_entry(inn, "Capítulos:", 2, "10", width=10)
         self.v_salida = folder_row(inn, "Carpeta de destino:", 3,
                                    str(Path.home() / "novelas"))
 
         # Formato
-        tk.Label(inn, text="Formato de salida:", bg=BG2, fg="#a0a0b0",
+        tk.Label(inn, text="Formato de salida:", bg=BG2, fg=FG2,
                  font=FONT_MAIN, anchor="w").grid(
             row=4, column=0, sticky="w", padx=(0, 8), pady=4)
         self.v_fmt = tk.StringVar(value="txt")
@@ -58,7 +62,7 @@ class TabScraping(tk.Frame):
                     row=4)
 
         # Perfil
-        tk.Label(inn, text="Perfil de sitio:", bg=BG2, fg="#a0a0b0",
+        tk.Label(inn, text="Perfil de sitio:", bg=BG2, fg=FG2,
                  font=FONT_MAIN, anchor="w").grid(
             row=5, column=0, sticky="w", padx=(0, 8), pady=4)
         self.v_perfil = tk.StringVar(value="(automático)")
@@ -67,20 +71,74 @@ class TabScraping(tk.Frame):
         self._combo.grid(row=5, column=1, sticky="w", pady=4)
         self.recargar_perfiles()
 
-        # Opciones
+        # Opciones generales
+        opts = tk.Frame(inn, bg=BG2)
+        opts.grid(row=6, column=1, sticky="w", pady=(2, 6))
         self.v_visible = tk.BooleanVar(value=False)
-        tk.Checkbutton(inn, text="Mostrar navegador (debug)",
-                       variable=self.v_visible,
-                       bg=BG2, fg="#a0a0b0", selectcolor=BG3,
-                       activebackground=BG2, font=FONT_MAIN).grid(
-            row=6, column=1, sticky="w", pady=(2, 8))
+        tk.Checkbutton(opts, text="Mostrar navegador",
+                       variable=self.v_visible, bg=BG2, fg=FG2,
+                       selectcolor=BG3, activebackground=BG2,
+                       font=FONT_MAIN).pack(side="left", padx=(0, 16))
 
-        # Progreso
-        self.pvar, self.lbl_cap = progress_section(self, row=2)
+        # ── Sección Cloudflare ─────────────────────────────────────────────────
+        cf_frame = tk.LabelFrame(
+            self, text="  🛡  Cloudflare / Anti-bot  ",
+            bg=CF_BG, fg=CF_FG, font=("Segoe UI", 9, "bold"),
+            relief="flat", bd=1, highlightbackground=CF_FG,
+            highlightthickness=1,
+        )
+        cf_frame.grid(row=2, column=0, columnspan=3, sticky="ew",
+                      padx=16, pady=(4, 2))
+        cf_frame.grid_columnconfigure(1, weight=1)
 
-        # Botones
+        # Opción 1: resolver manualmente
+        self.v_resolver_cf = tk.BooleanVar(value=False)
+        tk.Checkbutton(
+            cf_frame,
+            text="Resolver Cloudflare manualmente (pausa y espera que completes el challenge)",
+            variable=self.v_resolver_cf,
+            command=self._on_resolver_cf_toggle,
+            bg=CF_BG, fg=CF_FG, selectcolor="#0a1a2a",
+            activebackground=CF_BG, font=FONT_MAIN,
+        ).grid(row=0, column=0, columnspan=3, sticky="w", padx=10, pady=(6, 2))
+
+        # Opción 2: inyectar cookies
+        tk.Label(cf_frame, text="Inyectar cookies (cf_clearance.json):",
+                 bg=CF_BG, fg=FG2, font=FONT_MAIN, anchor="w").grid(
+            row=1, column=0, sticky="w", padx=(10, 8), pady=(2, 6))
+
+        self.v_cookies = tk.StringVar()
+        self._entry_cookies = tk.Entry(
+            cf_frame, textvariable=self.v_cookies,
+            bg=ENTRY_BG, fg=FG, insertbackground=FG,
+            font=FONT_MAIN, width=32, relief="flat", bd=3,
+        )
+        self._entry_cookies.grid(row=1, column=1, sticky="ew", pady=(2, 6))
+
+        btn_cf = tk.Frame(cf_frame, bg=CF_BG)
+        btn_cf.grid(row=1, column=2, padx=(6, 10), pady=(2, 6))
+        tk.Button(btn_cf, text="📂", bg=BG3, fg=FG, activebackground=ACCENT,
+                  relief="flat", bd=0, cursor="hand2",
+                  command=self._elegir_cookies).pack(side="left", padx=(0, 4))
+        tk.Button(btn_cf, text="✖", bg=BG3, fg=FG2, activebackground=ACCENT,
+                  relief="flat", bd=0, cursor="hand2", width=2,
+                  command=lambda: self.v_cookies.set("")).pack(side="left")
+
+        # Nota informativa
+        tk.Label(
+            cf_frame,
+            text="Exporta las cookies de tu navegador con la extensión 'Cookie-Editor' "
+                 "y selecciona el archivo JSON aquí.",
+            bg=CF_BG, fg="#6a7a8a", font=("Segoe UI", 8, "italic"),
+            wraplength=560, justify="left",
+        ).grid(row=2, column=0, columnspan=3, sticky="w", padx=10, pady=(0, 6))
+
+        # ── Progreso ───────────────────────────────────────────────────────────
+        self.pvar, self.lbl_cap = progress_section(self, row=3)
+
+        # ── Botones ────────────────────────────────────────────────────────────
         bf = tk.Frame(self, bg=BG2)
-        bf.grid(row=4, column=0, columnspan=3, pady=10, padx=16, sticky="w")
+        bf.grid(row=5, column=0, columnspan=3, pady=10, padx=16, sticky="w")
         self.btn_start = action_button(bf, "▶  Iniciar descarga", self._iniciar)
         self.btn_start.pack(side="left", padx=(0, 8))
         self.btn_detect = action_button(bf, "🔍 Detectar selectores",
@@ -91,13 +149,26 @@ class TabScraping(tk.Frame):
         self.btn_stop.configure(state="disabled")
         self.btn_stop.pack(side="left")
 
-        # Log
-        tk.Label(self, text="Registro:", bg=BG2, fg="#a0a0b0",
-                 font=FONT_MAIN).grid(row=5, column=0, sticky="w", padx=16)
-        self.log = log_box(self, row=6)
-        self.grid_rowconfigure(6, weight=1)
+        # ── Log ────────────────────────────────────────────────────────────────
+        tk.Label(self, text="Registro:", bg=BG2, fg=FG2,
+                 font=FONT_MAIN).grid(row=6, column=0, sticky="w", padx=16)
+        self.log = log_box(self, row=7)
+        self.grid_rowconfigure(7, weight=1)
 
     # ── Helpers ───────────────────────────────────────────────────────────────
+
+    def _on_resolver_cf_toggle(self):
+        """Al activar 'resolver CF manualmente', fuerza visible=True."""
+        if self.v_resolver_cf.get():
+            self.v_visible.set(True)
+
+    def _elegir_cookies(self):
+        ruta = filedialog.askopenfilename(
+            title="Seleccionar archivo de cookies",
+            filetypes=[("JSON", "*.json"), ("Todos", "*.*")],
+        )
+        if ruta:
+            self.v_cookies.set(ruta)
 
     def recargar_perfiles(self):
         vals = ["(automático)"] + ids_disponibles()
@@ -130,6 +201,13 @@ class TabScraping(tk.Frame):
         except Exception:
             messagebox.showerror("Error", "Capítulos debe ser un número positivo.")
             return False
+        if self.v_resolver_cf.get() and not self.v_visible.get():
+            messagebox.showwarning(
+                "Aviso",
+                "Para resolver Cloudflare manualmente se necesita ver el navegador.\n"
+                "'Mostrar navegador' ha sido activado automáticamente.",
+            )
+            self.v_visible.set(True)
         return True
 
     def _cmd_base(self) -> list[str]:
@@ -145,6 +223,10 @@ class TabScraping(tk.Frame):
             cmd += ["--sitio", self.v_perfil.get()]
         if self.v_visible.get():
             cmd.append("--visible")
+        if self.v_cookies.get().strip():
+            cmd += ["--cookies", self.v_cookies.get().strip()]
+        if self.v_resolver_cf.get():
+            cmd.append("--resolver-cf")
         return cmd
 
     # ── Acciones ──────────────────────────────────────────────────────────────
@@ -153,6 +235,11 @@ class TabScraping(tk.Frame):
         if not self._validar():
             return
         self._limpiar()
+        if self.v_resolver_cf.get():
+            append_log(self.log,
+                       "[~] Modo resolucion manual activo. Cuando aparezca "
+                       "Cloudflare, completa el challenge en el navegador y "
+                       "presiona ENTER en la terminal.")
         self._runner.run(self._cmd_base(), self.log,
                          self.pvar, self.lbl_cap, self._finalizar, self)
 
@@ -165,6 +252,8 @@ class TabScraping(tk.Frame):
         cmd = [sys.executable, str(SCRAPER), url, "--detectar"]
         if self.v_visible.get():
             cmd.append("--visible")
+        if self.v_cookies.get().strip():
+            cmd += ["--cookies", self.v_cookies.get().strip()]
 
         def done():
             self._finalizar()

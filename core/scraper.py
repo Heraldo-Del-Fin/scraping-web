@@ -162,6 +162,7 @@ class NovelScraper:
 
                 # Contenido (eliminar anuncios primero)
                 texto = ""
+                solo_parrafos = self._perfil.get("opciones", {}).get("solo_parrafos", False)
                 for sel in self._sels("contenido"):
                     try:
                         elem = self._page.query_selector(sel)
@@ -170,7 +171,15 @@ class NovelScraper:
                         for ad in self._sels("eliminar_anuncios"):
                             for node in elem.query_selector_all(ad):
                                 node.evaluate("el => el.remove()")
-                        texto = elem.inner_text().strip()
+                        if solo_parrafos:
+                            parrafos = elem.query_selector_all("p")
+                            texto = "\n\n".join(
+                                p.inner_text().strip()
+                                for p in parrafos
+                                if p.inner_text().strip()
+                            )
+                        else:
+                            texto = elem.inner_text().strip()
                         if len(texto) > 100:
                             break
                     except Exception:

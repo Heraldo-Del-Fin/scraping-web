@@ -47,7 +47,7 @@ class TabTraduccion(tk.Frame):
         inn.grid_columnconfigure(1, weight=1)
 
         # Archivo de entrada
-        tk.Label(inn, text="Archivo TXT:", bg=BG2, fg="#a0a0b0",
+        tk.Label(inn, text="Archivo (TXT o PDF):", bg=BG2, fg="#a0a0b0",
                  font=FONT_MAIN, anchor="w").grid(
             row=0, column=0, sticky="w", padx=(0, 8), pady=4)
         self.v_archivo = tk.StringVar()
@@ -104,8 +104,13 @@ class TabTraduccion(tk.Frame):
 
     def _elegir_archivo(self):
         ruta = filedialog.askopenfilename(
-            title="Seleccionar archivo TXT",
-            filetypes=[("Texto", "*.txt"), ("Todos", "*.*")],
+            title="Seleccionar archivo a traducir",
+            filetypes=[
+                ("Archivos compatibles", "*.txt *.pdf"),
+                ("Texto", "*.txt"),
+                ("PDF", "*.pdf"),
+                ("Todos", "*.*"),
+            ],
         )
         if ruta:
             self.v_archivo.set(ruta)

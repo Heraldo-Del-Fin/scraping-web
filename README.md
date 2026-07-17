@@ -25,6 +25,7 @@ The project is intended for personal reading, offline archiving, text processing
 ## Features
 
 ### Chapter Scraping
+
 - Scrape chapter content from multiple web novel sites.
 - Start from a novel index page or any valid chapter URL.
 - Automatically detect the site and load its scraping profile.
@@ -35,6 +36,7 @@ The project is intended for personal reading, offline archiving, text processing
 - Detect selectors automatically for unknown sites and save the profile.
 
 ### Site Profiles
+
 - JSON-based profile system (`perfiles.json`) — editable without touching the code.
 - Built-in profiles for NovelBin, Light Novel World, Royal Road, and Scribble Hub.
 - Generic fallback profile with common selectors for unsupported sites.
@@ -42,15 +44,18 @@ The project is intended for personal reading, offline archiving, text processing
 - Profile manager in the GUI: add, edit, activate, deactivate, and delete profiles visually.
 
 ### Content Export
+
 - Save extracted content as a single TXT file.
 - Save extracted content as JSON (structured, with metadata).
 - Save each chapter as a separate TXT file.
 - Configurable output folder and file name.
 
 ### Translation
+
 - Translate extracted chapters automatically using Google Translate.
 - No API key required — uses the free `deep-translator` library.
-- Processes previously extracted TXT files.
+- Processes previously extracted TXT files, or PDF files as input.
+- Detects chapters in a PDF automatically (chapter/section headings, falling back to one chapter per page, then to the whole document as a single block).
 - Translates title and body of each chapter independently.
 - Handles long chapters by splitting into safe-size chunks automatically.
 - Export translated content as TXT.
@@ -58,6 +63,7 @@ The project is intended for personal reading, offline archiving, text processing
 - Supports 10 languages: Spanish, Portuguese, French, German, Italian, Japanese, Korean, Simplified Chinese, Russian, and Arabic.
 
 ### Graphical User Interface
+
 - Dark-themed desktop interface built with Tkinter.
 - Three tabs: Download, Translate, and Profiles.
 - Real-time progress bar and chapter-by-chapter log.
@@ -146,6 +152,7 @@ New profiles can be added from the **Profiles** tab in the GUI or by editing `pe
 | HTML parsing       | Playwright selectors        |
 | Translation        | deep-translator (Google)    |
 | PDF generation     | ReportLab                   |
+| PDF text extraction| pypdf                       |
 | Desktop GUI        | Tkinter (stdlib)            |
 | Data persistence   | JSON                        |
 | Language           | Python 3.10+                |
@@ -160,7 +167,7 @@ git clone https://github.com/Heraldo-Del-Fin/web-novel-scraper
 cd web-novel-scraper
 
 # 2. Install dependencies
-pip install playwright deep-translator reportlab
+pip install -r requirements.txt
 
 # 3. Install the Chromium browser for Playwright
 playwright install chromium
@@ -193,6 +200,9 @@ python traductor_cli.py novelas/my-novel.txt --idioma es --formato-salida pdf
 
 # Translate and export as TXT
 python traductor_cli.py novelas/my-novel.txt --idioma pt --formato-salida txt
+
+# Translate directly from a PDF (chapters are auto-detected)
+python traductor_cli.py novelas/my-novel.pdf --idioma es --formato-salida pdf
 
 # List available translation languages
 python traductor_cli.py --listar-idiomas
@@ -243,5 +253,4 @@ The authors do not condone or encourage any unauthorized reproduction or distrib
 ## Author
 
 Luis Daniel Serrato Príncipe  
-GitHub: https://github.com/Heraldo-Del-Fin
-EOF
+GitHub: [Heraldo-Del-Fin](https://github.com/Heraldo-Del-Fin)

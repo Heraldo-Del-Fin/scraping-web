@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Output / generated content
+novelas/
+pdfs/
+
+# Editor / tool config not part of the project
+.sixth/
+
+# OS
+.DS_Store
+Thumbs.db

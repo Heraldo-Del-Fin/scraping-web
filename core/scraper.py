@@ -1,8 +1,9 @@
 """
 core/scraper.py
 ---------------
-Clase NovelScraper: navega sitios de novelas con Playwright,
-usa perfiles de core/perfiles.py para adaptar los selectores.
+Clase NovelScraper: navega sitios de novelas con Patchright (Playwright
+reforzado contra detección de bots), usa perfiles de core/perfiles.py
+para adaptar los selectores.
 """
 
 import json
@@ -17,9 +18,9 @@ if sys.stdout.encoding and sys.stdout.encoding.lower() != "utf-8":
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 try:
-    from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeout
+    from patchright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeout
 except ImportError:
-    print("ERROR: Playwright no instalado. Ejecuta: pip install playwright && playwright install chromium")
+    print("ERROR: Patchright no instalado. Ejecuta: pip install patchright && patchright install chromium")
     raise
 
 from core.perfiles import buscar_por_url, guardar_perfil, perfil_generico
@@ -28,6 +29,22 @@ from core.perfiles import buscar_por_url, guardar_perfil, perfil_generico
 
 TIMEOUT_MS     = 30_000
 MAX_REINTENTOS = 3
+
+PERFIL_NAVEGADOR = Path(__file__).parent.parent / ".browser_profile"
+
+# Marcadores de retos anti-bot conocidos (Cloudflare, DataDome, etc.)
+MARCADORES_DESAFIO = [
+    "just a moment",
+    "attention required",
+    "checking your browser",
+    "verifying you are human",
+    "un momento",
+]
+SELECTORES_DESAFIO = [
+    "iframe[src*='challenges.cloudflare.com']",
+    "#challenge-form",
+    "#challenge-running",
+]
 
 # ── Logger simple (compatible con el sistema PROGRESO: de la GUI) ─────────────
 
@@ -60,7 +77,7 @@ class NovelScraper:
     def __init__(self, headless: bool = True):
         self.headless   = headless
         self._pw        = None
-        self._browser   = None
+        self._ctx       = None
         self._page      = None
         self._perfil    = None   # se asigna en scrapear()
 
@@ -68,27 +85,21 @@ class NovelScraper:
 
     def __enter__(self):
         self._pw = sync_playwright().start()
-        self._browser = self._pw.chromium.launch(
+        # Perfil persistente + sin personalizar user-agent/viewport: patchright
+        # queda mejor "camuflado" dejando que Chromium use su huella por defecto.
+        PERFIL_NAVEGADOR.mkdir(parents=True, exist_ok=True)
+        self._ctx = self._pw.chromium.launch_persistent_context(
+            user_data_dir=str(PERFIL_NAVEGADOR),
             headless=self.headless,
-            args=["--no-sandbox", "--disable-blink-features=AutomationControlled"],
+            no_viewport=True,
+            args=["--no-sandbox"],
         )
-        ctx = self._browser.new_context(
-            user_agent=(
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                "AppleWebKit/537.36 (KHTML, like Gecko) "
-                "Chrome/124.0.0.0 Safari/537.36"
-            ),
-            viewport={"width": 1280, "height": 800},
-        )
-        self._page = ctx.new_page()
-        self._page.add_init_script(
-            "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
-        )
+        self._page = self._ctx.new_page()
         return self
 
     def __exit__(self, *_):
-        if self._browser:  self._browser.close()
-        if self._pw:       self._pw.stop()
+        if self._ctx: self._ctx.close()
+        if self._pw:  self._pw.stop()
 
     # ── Utilidades internas ───────────────────────────────────────────────────
 
@@ -119,6 +130,43 @@ class NovelScraper:
     def _esperar_carga(self):
         time.sleep(self._perfil["opciones"].get("espera_carga", 1.5))
 
+    # ── Detección y espera de retos anti-bot ──────────────────────────────────
+
+    def _hay_desafio_activo(self) -> bool:
+        try:
+            titulo = (self._page.title() or "").lower()
+        except Exception:
+            return False
+        if any(m in titulo for m in MARCADORES_DESAFIO):
+            return True
+        try:
+            return self._page.query_selector(", ".join(SELECTORES_DESAFIO)) is not None
+        except Exception:
+            return False
+
+    def _esperar_desafio(self, espera_max: float = 12.0) -> bool:
+        """
+        Si la página muestra un reto anti-bot (Cloudflare, etc.), espera a que
+        se resuelva solo. Con un navegador no detectado, la mayoría de los
+        retos "managed" se resuelven en pocos segundos sin intervención.
+        Devuelve True si no había reto o si se resolvió a tiempo.
+        """
+        if not self._hay_desafio_activo():
+            return True
+
+        log("Reto anti-bot detectado, esperando resolución automática...", "WARN")
+        transcurrido = 0.0
+        paso = 1.0
+        while transcurrido < espera_max:
+            time.sleep(paso)
+            transcurrido += paso
+            if not self._hay_desafio_activo():
+                log("Reto anti-bot resuelto.", "OK")
+                return True
+
+        log("El reto anti-bot no se resolvió a tiempo.", "ERROR")
+        return False
+
     # ── Detección de tipo de URL ──────────────────────────────────────────────
 
     def _es_indice(self, url: str) -> bool:
@@ -133,6 +181,8 @@ class NovelScraper:
         log(f"Cargando índice: {url}")
         self._page.goto(url, timeout=TIMEOUT_MS, wait_until="domcontentloaded")
         self._esperar_carga()
+        if not self._esperar_desafio():
+            return None
 
         elem = self._primer_elem(self._sels("indice_primer_cap"))
         if elem:
@@ -153,6 +203,8 @@ class NovelScraper:
             try:
                 self._page.goto(url, timeout=TIMEOUT_MS, wait_until="domcontentloaded")
                 time.sleep(espera)
+                if not self._esperar_desafio():
+                    raise RuntimeError("Reto anti-bot sin resolver")
 
                 # Título
                 titulo = ""
@@ -266,6 +318,7 @@ class NovelScraper:
         try:
             self._page.goto(url, timeout=TIMEOUT_MS, wait_until="domcontentloaded")
             self._esperar_carga()
+            self._esperar_desafio()  # best-effort: seguimos aunque no se resuelva
         except Exception as e:
             log(f"No se pudo cargar la página: {e}", "ERROR")
             return None
@@ -345,17 +398,35 @@ class NovelScraper:
                 log_progreso(i, num_capitulos, estado="error")
                 break
 
+            # Salvaguarda: contenido idéntico al capítulo anterior.
+            # Pasa cuando el sitio bloquea/atasca la página (ej. un reto anti-bot
+            # que no se resuelve) pero la URL "siguiente" sigue avanzando por el
+            # fallback de incremento — sin esto se guardarían N copias del mismo
+            # capítulo en vez de detenerse.
+            if capitulos and (cap["titulo"], cap["texto"]) == (capitulos[-1]["titulo"], capitulos[-1]["texto"]):
+                log("Contenido idéntico al capítulo anterior (posible bloqueo o "
+                    "selector roto). Deteniendo.", "ERROR")
+                log_progreso(i, num_capitulos, estado="error")
+                break
+
             capitulos.append(cap)
             log(f'  -> "{cap["titulo"][:65]}"', "OK")
             log_progreso(i, num_capitulos, titulo=cap["titulo"], estado="ok")
 
             if i < num_capitulos:
-                if cap["siguiente"]:
-                    url_actual = cap["siguiente"]
-                    time.sleep(delay)
-                else:
+                if not cap["siguiente"]:
                     log("No hay capítulo siguiente. Fin de la novela.", "SKIP")
                     log_progreso(i, num_capitulos, estado="fin")
                     break
+                # Salvaguarda: el enlace "siguiente" apunta al capítulo actual
+                # (selector roto que engancha un link fijo de la página, ej. un
+                # widget de navegación que siempre apunta al mismo capítulo).
+                if cap["siguiente"] == url_actual:
+                    log("El enlace 'siguiente' apunta al mismo capítulo "
+                        "(selector roto). Deteniendo.", "ERROR")
+                    log_progreso(i, num_capitulos, estado="error")
+                    break
+                url_actual = cap["siguiente"]
+                time.sleep(delay)
 
         return capitulos

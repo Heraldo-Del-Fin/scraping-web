@@ -12,6 +12,9 @@ env/
 novelas/
 pdfs/
 
+# Persistent browser profile used by the scraper (patchright)
+.browser_profile/
+
 # Editor / tool config not part of the project
 .sixth/
 

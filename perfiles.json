@@ -73,7 +73,6 @@
           ".content-container"
         ],
         "siguiente": [
-          "a[href*='/chapter/'][href*='chapter/2']",
           "a[rel='next']",
           "a:has-text('Next Chapter')",
           "a:has-text('Next')"

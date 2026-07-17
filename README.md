@@ -34,6 +34,8 @@ The project is intended for personal reading, offline archiving, text processing
 - Configure the number of chapters to extract.
 - Force a specific scraping profile when auto-detection is not enough.
 - Detect selectors automatically for unknown sites and save the profile.
+- Runs on a hardened browser (Patchright) that resists common headless-browser fingerprinting.
+- Detects Cloudflare-style anti-bot challenges and waits for automatic resolution before giving up.
 
 ### Site Profiles
 
@@ -146,16 +148,16 @@ New profiles can be added from the **Profiles** tab in the GUI or by editing `pe
 
 ## Technologies
 
-| Area               | Library / Tool              |
-|--------------------|-----------------------------|
-| Web scraping       | Playwright (Chromium)       |
-| HTML parsing       | Playwright selectors        |
-| Translation        | deep-translator (Google)    |
-| PDF generation     | ReportLab                   |
-| PDF text extraction| pypdf                       |
-| Desktop GUI        | Tkinter (stdlib)            |
-| Data persistence   | JSON                        |
-| Language           | Python 3.10+                |
+| Area                | Library / Tool                                        |
+|---------------------|-------------------------------------------------------|
+| Web scraping        | Patchright (Chromium, hardened against bot detection) |
+| HTML parsing        | Patchright selectors                                  |
+| Translation         | deep-translator (Google)                              |
+| PDF generation      | ReportLab                                             |
+| PDF text extraction | pypdf                                                 |
+| Desktop GUI         | Tkinter (stdlib)                                      |
+| Data persistence    | JSON                                                  |
+| Language            | Python 3.10+                                          |
 
 ---
 
@@ -169,8 +171,8 @@ cd web-novel-scraper
 # 2. Install dependencies
 pip install -r requirements.txt
 
-# 3. Install the Chromium browser for Playwright
-playwright install chromium
+# 3. Install the Chromium browser for Patchright
+patchright install chromium
 
 # 4. Launch the application
 python main.py
@@ -228,7 +230,7 @@ The long-term goal is to evolve the project into a fully open-source tool for th
 - **EPUB export** — generate standard eBook files compatible with readers like Calibre and Kindle.
 - **Batch processing** — queue multiple novels for unattended overnight scraping.
 - **Chapter deduplication** — detect and skip already downloaded chapters when resuming.
-- **Improved anti-bot handling** — rotating user agents, human-like delays, and proxy support.
+- **Advanced anti-bot handling** — local FlareSolverr sidecar for hard Cloudflare challenges, humanized delay jitter, and proxy support. (Basic stealth and challenge-detection already in place via Patchright.)
 
 ---
 

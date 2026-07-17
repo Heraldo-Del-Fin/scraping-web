@@ -1,4 +1,4 @@
-playwright>=1.40
+patchright>=1.50
 deep-translator>=1.11
 reportlab>=4.0
 pypdf>=4.0
